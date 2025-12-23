@@ -4,138 +4,186 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>ConceptCheck AI — 개념 설명</title>
-  <style>
-    :root{--bg:#0b0f19;--card:#121a2a;--text:#e7edf7;--muted:#a9b5c6;--line:#22314d;--accent:#6aa6ff;--radius:16px;}
-    *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans KR",sans-serif;color:var(--text);background:var(--bg);}
-    .wrap{max-width:980px;margin:0 auto;padding:26px 16px 70px}
-    .card{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);padding:16px}
-    h1{margin:0 0 8px;font-size:18px} .sub{color:var(--muted);font-size:12px;margin-bottom:14px}
-    label{display:block;color:var(--muted);font-size:12px;margin:10px 0 6px}
-    select,textarea{width:100%;border:1px solid var(--line);border-radius:12px;background:#0f1626;color:var(--text);padding:10px 11px}
-    textarea{min-height:140px;resize:vertical}
-    .row{margin-bottom:12px}
-    .btn{cursor:pointer;border:1px solid var(--line);background:rgba(106,166,255,.14);color:var(--text);padding:10px 12px;border-radius:12px}
-    .btn2{cursor:pointer;border:1px solid var(--line);background:#0f1626;color:var(--text);padding:10px 12px;border-radius:12px}
-    .split{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
-    .hint{color:var(--muted);font-size:12px}
-  </style>
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <h1>개념 설명 페이지</h1>
-      <div class="sub">개념을 선택하고, 기준 정의(교과서/노트)를 정리한 뒤 문제 풀이로 넘어가세요.</div>
-
-      <div class="row">
-        <label>교과</label>
-        <select id="subject"></select>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo"></div>
+      <div>
+        <h1>ConceptCheck AI</h1>
+        <div class="sub">개념 설명 페이지 · 기준 정의 작성 후 문제 풀이로 이동</div>
       </div>
+    </div>
+    <div class="controls">
+      <button class="btn primary" id="btnGo">문제 풀이로 이동 →</button>
+    </div>
+  </header>
 
-      <div class="row">
-        <label>개념</label>
-        <select id="concept"></select>
-      </div>
-
-      <div class="row">
-        <label>난이도(학년/수준)</label>
-        <select id="level">
-          <option value="elementary">초등</option>
-          <option value="middle" selected>중등</option>
-          <option value="high">고등</option>
-        </select>
-      </div>
-
-      <div class="row">
-        <label>정확한 개념 설명(기준)</label>
-        <textarea id="gold"></textarea>
-        <div class="hint">팁: 정의 + 핵심 요소 + 조건/예시 형태로 작성하면 좋아요.</div>
-      </div>
-
-      <div class="split">
-        <button class="btn2" id="btnExample">예시 채우기</button>
+  <div class="grid">
+    <!-- Left (1.2fr) -->
+    <section class="card">
+      <div class="hd">
         <div>
-          <span class="hint">다음 단계:</span>
-          <button class="btn" id="btnGo">문제 풀이로 이동 →</button>
+          <p class="title">개념 선택 · 기준 정의</p>
+          <div class="desc">교과/개념을 고르고, 기준 설명(교과서/노트)을 정리하세요.</div>
+        </div>
+        <div class="split">
+          <button class="btn" id="btnExample">예시 채우기</button>
         </div>
       </div>
 
-      <div class="hint" style="margin-top:12px;">
-        * 선택한 개념/기준 정의는 브라우저에 저장되어, 문제 풀이 페이지에서 자동으로 불러옵니다.
+      <div class="bd">
+        <div class="row">
+          <label>교과/영역</label>
+          <div class="chips" id="subjectChips"></div>
+        </div>
+
+        <div class="twocol">
+          <div class="row">
+            <label>개념(Concept)</label>
+            <select id="conceptSelect"></select>
+          </div>
+          <div class="row">
+            <label>난이도(학년/수준)</label>
+            <select id="level">
+              <option value="elementary">초등</option>
+              <option value="middle" selected>중등</option>
+              <option value="high">고등</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <label>정확한 개념 설명(기준)</label>
+          <textarea id="gold"></textarea>
+          <div class="small muted">팁: 정의 + 핵심 요소 + 조건/예시 형태가 좋아요.</div>
+        </div>
       </div>
-    </div>
+    </section>
+
+    <!-- Right (0.8fr) -->
+    <aside class="card">
+      <div class="hd">
+        <div>
+          <p class="title">다음 단계 안내</p>
+          <div class="desc">작성한 기준 정의가 문제 풀이 페이지로 전달됩니다.</div>
+        </div>
+      </div>
+      <div class="bd">
+        <div class="item">
+          <div style="font-size:13px; font-weight:700; margin-bottom:6px;">저장/이동 방식</div>
+          <div class="small muted" style="line-height:1.6;">
+            - 선택한 교과/개념/난이도/기준 정의는 브라우저 localStorage에 저장<br/>
+            - 문제 풀이 페이지에서 자동 불러오기<br/>
+            - GitHub Pages에서도 정상 동작
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="item">
+          <div style="font-size:13px; font-weight:700; margin-bottom:6px;">체크리스트</div>
+          <div class="small muted" style="line-height:1.6;">
+            1) 기준 정의에 핵심 키워드(재료/조건/결과)가 포함되어 있나요?<br/>
+            2) 너무 짧지 않나요? (1~2문장 이상 권장)
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <button class="btn primary" style="width:100%; justify-content:center;" id="btnGo2">
+          문제 풀이로 이동 →
+        </button>
+      </div>
+    </aside>
   </div>
+</div>
 
-  <script type="module">
-    import { subjects, conceptsOf, getConcept, saveState, loadState } from "./app.js";
+<script type="module">
+  import { subjects, conceptsOf, getConcept, saveState, loadState } from "./app.js";
 
-    const $ = (id)=>document.getElementById(id);
+  const $ = (id)=>document.getElementById(id);
+  let currentSubject = subjects()[0];
 
-    function fillSubjects(){
-      $("subject").innerHTML = subjects().map(s=>`<option value="${s}">${s}</option>`).join("");
-    }
-    function fillConcepts(subject){
-      $("concept").innerHTML = conceptsOf(subject).map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
-      const first = conceptsOf(subject)[0];
-      if(first) $("gold").value = first.gold;
-    }
-
-    function syncGold(){
-      const sub = $("subject").value;
-      const cid = $("concept").value;
-      const c = getConcept(sub, cid);
-      if(c) $("gold").value = c.gold;
-    }
-
-    function saveCurrent(){
-      const sub = $("subject").value;
-      const cid = $("concept").value;
-      const c = getConcept(sub, cid);
-      saveState({
-        subject: sub,
-        concept_id: cid,
-        concept: c ? c.name : "",
-        level: $("level").value,
-        gold_definition: $("gold").value.trim()
-      });
-    }
-
-    $("subject").addEventListener("change", ()=>{
-      fillConcepts($("subject").value);
-      saveCurrent();
+  function setSubject(subject){
+    currentSubject = subject;
+    document.querySelectorAll(".chip[data-subject]").forEach(ch=>{
+      ch.classList.toggle("active", ch.getAttribute("data-subject")===subject);
     });
-    $("concept").addEventListener("change", ()=>{
-      syncGold();
-      saveCurrent();
-    });
-    $("level").addEventListener("change", saveCurrent);
-    $("gold").addEventListener("input", saveCurrent);
-
-    $("btnExample").addEventListener("click", ()=>{
-      const sub = $("subject").value;
-      const cid = $("concept").value;
-      const c = getConcept(sub, cid);
-      if(c) $("gold").value = c.gold;
-      saveCurrent();
-    });
-
-    $("btnGo").addEventListener("click", ()=>{
-      saveCurrent();
-      location.href = "./practice.html";
-    });
-
-    // init: state 복원
-    fillSubjects();
-    const state = loadState();
-    if(state && state.subject){
-      $("subject").value = state.subject;
-      fillConcepts(state.subject);
-      if(state.concept_id) $("concept").value = state.concept_id;
-      if(state.level) $("level").value = state.level;
-      if(state.gold_definition) $("gold").value = state.gold_definition;
-    }else{
-      fillConcepts($("subject").value);
-      saveCurrent();
+    const concepts = conceptsOf(subject);
+    $("conceptSelect").innerHTML = concepts.map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
+    if(concepts[0]){
+      $("gold").value = concepts[0].gold;
     }
-  </script>
+    saveCurrent();
+  }
+
+  function initSubjects(){
+    const root = $("subjectChips");
+    root.innerHTML = "";
+    subjects().forEach((sub, i)=>{
+      const chip = document.createElement("div");
+      chip.className = "chip" + (i===0 ? " active":"");
+      chip.textContent = sub;
+      chip.setAttribute("data-subject", sub);
+      chip.setAttribute("data-subject", sub);
+      chip.addEventListener("click", ()=> setSubject(sub));
+      root.appendChild(chip);
+    });
+  }
+
+  function saveCurrent(){
+    const cid = $("conceptSelect").value;
+    const c = getConcept(currentSubject, cid);
+    saveState({
+      subject: currentSubject,
+      concept_id: cid,
+      concept: c ? c.name : "",
+      level: $("level").value,
+      gold_definition: $("gold").value.trim()
+    });
+  }
+
+  $("conceptSelect").addEventListener("change", ()=>{
+    const c = getConcept(currentSubject, $("conceptSelect").value);
+    if(c) $("gold").value = c.gold;
+    saveCurrent();
+  });
+  $("level").addEventListener("change", saveCurrent);
+  $("gold").addEventListener("input", saveCurrent);
+
+  $("btnExample").addEventListener("click", ()=>{
+    const c = getConcept(currentSubject, $("conceptSelect").value);
+    if(c) $("gold").value = c.gold;
+    saveCurrent();
+  });
+
+  function goPractice(){
+    saveCurrent();
+    location.href = "./practice.html";
+  }
+  $("btnGo").addEventListener("click", goPractice);
+  $("btnGo2").addEventListener("click", goPractice);
+
+  // init (state 복원)
+  initSubjects();
+  const st = loadState();
+  if(st && st.subject){
+    currentSubject = st.subject;
+    // chips active 적용
+    document.querySelectorAll(".chip[data-subject]").forEach(ch=>{
+      ch.classList.toggle("active", ch.getAttribute("data-subject")===currentSubject);
+    });
+    $("level").value = st.level || "middle";
+    const concepts = conceptsOf(currentSubject);
+    $("conceptSelect").innerHTML = concepts.map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
+    $("conceptSelect").value = st.concept_id || concepts[0]?.id || "";
+    $("gold").value = st.gold_definition || getConcept(currentSubject, $("conceptSelect").value)?.gold || "";
+  }else{
+    setSubject(currentSubject);
+  }
+</script>
 </body>
 </html>
