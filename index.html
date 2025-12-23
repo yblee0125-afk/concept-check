@@ -222,10 +222,11 @@
 
         <div class="hr"></div>
 
-       <div class="row" style="display:none;">
-        <label>진단 프롬프트(요약 미리보기)</label>
-        <pre id="promptPreview"></pre>
-      </div>
+        <!-- ✅ 프롬프트 미리보기는 화면에 그대로 보이게 유지 -->
+        <div class="row">
+          <label>진단 프롬프트(요약 미리보기)</label>
+          <pre id="promptPreview"></pre>
+        </div>
       </div>
     </section>
 
@@ -244,10 +245,12 @@
       <div class="bd">
         <div id="resultSummary" class="item" style="display:none"></div>
 
+        <!-- ✅ '결과 JSON'은 화면에서 숨김 (내부 기능 유지 위해 요소는 남김) -->
         <div class="row" style="display:none;">
           <label>결과 JSON</label>
           <pre id="resultJson">{}</pre>
         </div>
+
         <div class="hr"></div>
 
         <div class="row">
@@ -441,6 +444,44 @@ function demoDiagnose(conceptName, gold, answer){
   const a = answer.toLowerCase();
   const g = gold.toLowerCase();
 
+  // ✅ 0) "모름/공백/너무 짧은 답" 방어 로직 (필수 패치)
+  const trimmed = answer.trim();
+  const dontKnowPatterns = ["몰라", "모르", "모르겠", "잘 모르", "잘모르", "모르겠어", "모르겠습니다", "모름", "idk", "unknown", "no idea"];
+
+  const isDontKnow =
+    trimmed.length === 0 ||
+    trimmed.length < 4 ||
+    dontKnowPatterns.some(p => a.includes(p));
+
+  if (isDontKnow) {
+    return {
+      student_summary: "학습자가 개념을 아직 설명하기 어려워하며, 핵심 요소가 답변에 포함되지 않았어요.",
+      understanding_level: "low",
+      is_correct: false,
+      misconceptions: [
+        {
+          type: "missing_info",
+          issue: "개념의 정의/핵심 요소가 답변에 거의 포함되지 않았어요.",
+          evidence: `답변: "${trimmed || "(빈 답변)"}"`
+        }
+      ],
+      feedback:
+        "괜찮아요. 지금은 개념을 말로 풀어내기 어려운 상태예요.\n" +
+        "먼저 기준 설명에서 핵심 키워드(무엇을/무엇으로/무엇을 만들고/무엇이 나오는지)를 표시해보고,\n" +
+        "그 키워드 2~3개를 포함해서 1~2문장으로 다시 써보세요.",
+      correct_explanation: gold.trim(),
+      next_questions: [
+        "기준 설명에서 '재료(무엇을 사용하나)'는 무엇인가요?",
+        "이 과정의 '결과물(무엇이 만들어지고 무엇이 나오는가)'은 무엇인가요?",
+        "핵심 키워드 2~3개를 포함해 1문장으로 다시 설명해보세요."
+      ],
+      study_tips: [
+        "정의 문장을 '재료 → 과정/조건 → 결과' 순서로 바꿔 써보면 기억이 오래가요.",
+        "헷갈리는 단어(흡수/방출 등)는 암기보다 흐름(입력→출력)으로 정리해보세요."
+      ]
+    };
+  }
+
   let misconceptions = [];
   let isCorrect = true;
 
@@ -625,6 +666,7 @@ function levelBadge(lv){
 }
 
 function showResult(result, {save=true}={}){
+  // ✅ JSON은 화면에 숨겨도 내부 데이터/기능 유지를 위해 계속 채움
   $("resultJson").textContent = safeJson(result);
 
   const badge = levelBadge(result.understanding_level);
