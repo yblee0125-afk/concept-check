@@ -4,274 +4,264 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>ConceptCheck AI — 문제 풀이</title>
-  <style>
-    :root{
-      --bg:#0b0f19; --card:#121a2a; --text:#e7edf7; --muted:#a9b5c6; --line:#22314d;
-      --accent:#6aa6ff; --good:#30d158; --warn:#ffd60a; --bad:#ff453a; --radius:16px;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans KR",sans-serif;color:var(--text);background:var(--bg);}
-    .wrap{max-width:1100px;margin:0 auto;padding:26px 16px 70px}
-    .grid{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}
-    @media (max-width:980px){.grid{grid-template-columns:1fr}}
-    .card{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);padding:16px}
-    h1{margin:0 0 6px;font-size:18px}
-    .sub{color:var(--muted);font-size:12px;margin-bottom:14px}
-    label{display:block;color:var(--muted);font-size:12px;margin:10px 0 6px}
-    textarea,select,input{
-      width:100%;border:1px solid var(--line);border-radius:12px;background:#0f1626;color:var(--text);padding:10px 11px
-    }
-    textarea{min-height:120px;resize:vertical}
-    .btn{cursor:pointer;border:1px solid var(--line);background:rgba(106,166,255,.14);color:var(--text);padding:10px 12px;border-radius:12px}
-    .btn2{cursor:pointer;border:1px solid var(--line);background:#0f1626;color:var(--text);padding:10px 12px;border-radius:12px}
-    .split{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
-    .badge{font-size:11px;padding:5px 9px;border-radius:999px;border:1px solid var(--line);background:#0f1626}
-    .badge.good{border-color:rgba(48,209,88,.4)} .badge.warn{border-color:rgba(255,214,10,.4)} .badge.bad{border-color:rgba(255,69,58,.4)}
-    pre{margin:0;padding:12px;border-radius:14px;border:1px solid var(--line);background:#0f1626;overflow:auto;font-family:var(--mono);font-size:12px;line-height:1.45}
-    .hr{height:1px;background:var(--line);margin:12px 0}
-    .muted{color:var(--muted)} .small{font-size:12px}
-    .item{border:1px solid var(--line);border-radius:14px;background:#0f1626;padding:12px}
-  </style>
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <div class="wrap">
-    <div class="split" style="margin-bottom:12px;">
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo"></div>
       <div>
-        <h1>문제 풀이 · 진단 페이지</h1>
-        <div class="sub">서술형 답변을 작성하면 Demo 진단이 결과를 생성합니다. (결과 JSON은 화면에서 숨김)</div>
-      </div>
-      <div class="split">
-        <button class="btn2" id="btnBack">← 개념 설명으로</button>
-        <button class="btn2" id="btnReset">초기화</button>
+        <h1>ConceptCheck AI</h1>
+        <div class="sub">문제 풀이 페이지 · 서술형 답변을 진단합니다</div>
       </div>
     </div>
+    <div class="controls">
+      <button class="btn" id="btnBack">← 개념 설명</button>
+      <button class="btn" id="btnReset">초기화</button>
+    </div>
+  </header>
 
-    <div class="grid">
-      <div class="card">
+  <div class="grid">
+    <!-- Left (1.2fr) -->
+    <section class="card">
+      <div class="hd">
+        <div>
+          <p class="title">서술형 답변 입력</p>
+          <div class="desc">기준 정의를 확인하고, 자신의 말로 개념을 설명해보세요.</div>
+        </div>
         <div class="split">
-          <div>
-            <div class="small muted">선택 개념</div>
-            <div id="conceptTitle" style="font-size:15px;font-weight:700;">-</div>
-          </div>
-          <div>
-            <div class="small muted">난이도</div>
-            <div id="levelText" style="font-size:13px;">-</div>
-          </div>
+          <button class="btn primary" id="btnAnalyze">진단 실행</button>
         </div>
-
-        <div class="hr"></div>
-
-        <label>기준 정의(개념 설명 페이지에서 가져옴)</label>
-        <textarea id="gold"></textarea>
-        <div class="small muted">필요하면 여기서도 수정 가능해요.</div>
-
-        <label style="margin-top:12px;">학습자 서술형 답변</label>
-        <textarea id="answer" placeholder="개념을 자신의 말로 설명해보세요."></textarea>
-
-        <div class="split" style="margin-top:12px;">
-          <button class="btn2" id="btnExample">오답 예시 넣기</button>
-          <button class="btn" id="btnAnalyze">진단 실행</button>
-        </div>
-
-        <div class="hr"></div>
-
-        <label>진단 프롬프트(요약 미리보기)</label>
-        <pre id="promptPreview"></pre>
       </div>
 
-      <div class="card">
+      <div class="bd">
+        <div class="twocol">
+          <div class="row">
+            <label>선택 개념</label>
+            <input id="conceptTitle" disabled />
+          </div>
+          <div class="row">
+            <label>난이도</label>
+            <input id="levelText" disabled />
+          </div>
+        </div>
+
+        <div class="row">
+          <label>기준 정의(개념 설명 페이지에서 가져옴)</label>
+          <textarea id="gold"></textarea>
+          <div class="small muted">필요하면 여기서도 수정 가능(수정 시 저장됨)</div>
+        </div>
+
+        <div class="row">
+          <label>학습자 서술형 답변</label>
+          <textarea id="answer" placeholder="개념을 자신의 말로 설명해보세요."></textarea>
+          <div class="small muted">예: “광합성은 ...”</div>
+        </div>
+
         <div class="split">
-          <div>
-            <div class="small muted">진단 결과</div>
-            <div class="small muted">요약 · 오개념 · 피드백 · 후속 질문</div>
-          </div>
-          <div class="split">
-            <button class="btn2" id="btnCopyJson">JSON 복사</button>
-            <button class="btn2" id="btnExport">결과 저장(.json)</button>
-          </div>
+          <button class="btn" id="btnExample">오답 예시 넣기</button>
+          <span class="small muted">결과 JSON은 화면에서 숨김(복사/저장은 가능)</span>
         </div>
 
         <div class="hr"></div>
 
+        <div class="row">
+          <label>진단 프롬프트(요약 미리보기)</label>
+          <pre id="promptPreview"></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right (0.8fr) -->
+    <aside class="card">
+      <div class="hd">
+        <div>
+          <p class="title">진단 결과</p>
+          <div class="desc">요약 · 오개념 · 피드백 · 후속 질문</div>
+        </div>
+        <div class="split">
+          <button class="btn" id="btnCopyJson">JSON 복사</button>
+          <button class="btn" id="btnExport">결과 저장(.json)</button>
+        </div>
+      </div>
+
+      <div class="bd">
         <div id="resultBox" class="item" style="display:none;"></div>
 
-        <!-- ✅ 결과 JSON은 숨김 (기능은 유지) -->
+        <!-- ✅ 결과 JSON 숨김(기능 유지) -->
         <pre id="resultJson" style="display:none;">{}</pre>
 
         <div class="hr"></div>
-        <div class="small muted">* 결과는 localStorage에 저장해도 되지만, 여기 페이지는 간단히 데모만 제공합니다.</div>
+
+        <div class="small muted">
+          * Demo 모드는 키워드 유사도 기반으로 “정답(유사키워드 충분)”만 정답 처리합니다.
+        </div>
       </div>
-    </div>
+    </aside>
   </div>
+</div>
 
-  <script type="module">
-    import {
-      loadState, saveState, nowStamp, safeJson, demoDiagnose, escapeHtml
-    } from "./app.js";
+<script type="module">
+  import { loadState, saveState, nowStamp, safeJson, demoDiagnose, escapeHtml, levelLabel } from "./app.js";
 
-    const $ = (id)=>document.getElementById(id);
+  const $ = (id)=>document.getElementById(id);
 
-    function levelLabel(lv){
-      return lv==="elementary"?"초등": lv==="middle"?"중등":"고등";
-    }
+  function buildPromptPreview(concept, gold, answer, level){
+    const sys = [
+      "너는 교육용 AI 튜터이자 '개념 진단' 평가자이다.",
+      "목표는 학습자의 서술형 답변을 분석하여 개념 이해 여부와 오개념을 진단하고,",
+      "친절하고 단계적으로 피드백을 제공하는 것이다.",
+      "반드시 JSON 스키마 형태로 출력하라."
+    ].join("\\n");
 
-    function buildPromptPreview(concept, gold, answer, level){
-      const sys = [
-        "너는 교육용 AI 튜터이자 '개념 진단' 평가자이다.",
-        "목표는 학습자의 서술형 답변을 분석하여 개념 이해 여부와 오개념을 진단하고,",
-        "친절하고 단계적으로 피드백을 제공하는 것이다.",
-        "반드시 JSON 스키마 형태로 출력하라."
-      ].join("\\n");
+    const user = [
+      `[학습 수준]`,
+      levelLabel(level),
+      "",
+      `[학습 개념]`,
+      concept,
+      "",
+      `[정확한 개념 설명(기준)]`,
+      gold,
+      "",
+      `[학습자 답변]`,
+      answer
+    ].join("\\n");
 
-      const user = [
-        `[학습 수준]`,
-        levelLabel(level),
-        "",
-        `[학습 개념]`,
-        concept,
-        "",
-        `[정확한 개념 설명(기준)]`,
-        gold,
-        "",
-        `[학습자 답변]`,
-        answer
-      ].join("\\n");
+    return `SYSTEM\\n${sys}\\n\\nUSER\\n${user}`;
+  }
 
-      return `SYSTEM\\n${sys}\\n\\nUSER\\n${user}`;
-    }
-
-    function renderResult(result){
-      $("resultJson").textContent = safeJson(result);
-
-      const badgeClass =
-        result.understanding_level==="high" ? "good" :
-        result.understanding_level==="medium" ? "warn" : "bad";
-
-      $("resultBox").style.display = "block";
-      $("resultBox").innerHTML = `
-        <div class="split">
-          <div>
-            <div style="font-size:13px;font-weight:700;">요약</div>
-            <div class="small muted">${escapeHtml(result.student_summary)}</div>
-          </div>
-          <span class="badge ${badgeClass}">${result.understanding_level.toUpperCase()} · ${result.is_correct ? "Correct" : "Needs Fix"}</span>
-        </div>
-
-        <div class="hr"></div>
-
-        <div style="font-size:13px;font-weight:700;">오개념 진단</div>
-        <div class="small muted" style="margin-top:6px;">
-          ${
-            (result.misconceptions && result.misconceptions.length)
-            ? result.misconceptions.map(m=>`
-              <div style="margin-bottom:10px;">
-                <span class="badge">${escapeHtml(m.type)}</span>
-                <div style="margin-top:6px;">• ${escapeHtml(m.issue)}</div>
-                <div class="small muted">근거: ${escapeHtml(m.evidence)}</div>
-              </div>
-            `).join("")
-            : `<div class="muted">오개념이 뚜렷하게 발견되지 않았어요.</div>`
-          }
-        </div>
-
-        <div class="hr"></div>
-
-        <div style="font-size:13px;font-weight:700;">맞춤 피드백</div>
-        <pre style="margin-top:8px;white-space:pre-wrap;">${escapeHtml(result.feedback || "")}</pre>
-
-        <div class="hr"></div>
-
-        <div style="font-size:13px;font-weight:700;">후속 질문</div>
-        <div class="small muted" style="margin-top:6px;">
-          ${(result.next_questions||[]).map(q=>`<div>• ${escapeHtml(q)}</div>`).join("")}
-        </div>
-      `;
-    }
-
-    function updatePrompt(){
-      const st = loadState();
-      if(!st) return;
-      $("promptPreview").textContent = buildPromptPreview(
-        st.concept || "-",
-        $("gold").value.trim(),
-        $("answer").value.trim(),
-        st.level || "middle"
-      );
-    }
-
-    // init: state 불러오기
+  function updatePrompt(){
     const st = loadState();
-    if(!st){
-      $("conceptTitle").textContent = "먼저 개념 설명 페이지에서 개념을 선택하세요.";
-      $("levelText").textContent = "-";
-      $("gold").value = "";
-    }else{
-      $("conceptTitle").textContent = st.concept || "-";
-      $("levelText").textContent = levelLabel(st.level || "middle");
-      $("gold").value = st.gold_definition || "";
-      updatePrompt();
+    if(!st) return;
+    $("promptPreview").textContent = buildPromptPreview(
+      st.concept || "-",
+      $("gold").value.trim(),
+      $("answer").value.trim(),
+      st.level || "middle"
+    );
+  }
+
+  function renderResult(result){
+    $("resultJson").textContent = safeJson(result);
+
+    const badgeClass =
+      result.understanding_level==="high" ? "good" :
+      result.understanding_level==="medium" ? "warn" : "bad";
+
+    $("resultBox").style.display = "block";
+    $("resultBox").innerHTML = `
+      <div class="split">
+        <div>
+          <div style="font-size:13px;font-weight:700;">요약</div>
+          <div class="small muted">${escapeHtml(result.student_summary)}</div>
+        </div>
+        <span class="badge ${badgeClass}">${result.understanding_level.toUpperCase()} · ${result.is_correct ? "Correct" : "Needs Fix"}</span>
+      </div>
+
+      <div class="hr"></div>
+
+      <div style="font-size:13px;font-weight:700;">오개념 진단</div>
+      <div class="small muted" style="margin-top:6px;">
+        ${
+          (result.misconceptions && result.misconceptions.length)
+          ? result.misconceptions.map(m=>`
+            <div style="margin-bottom:10px;">
+              <span class="badge">${escapeHtml(m.type)}</span>
+              <div style="margin-top:6px;">• ${escapeHtml(m.issue)}</div>
+              <div class="small muted">근거: ${escapeHtml(m.evidence)}</div>
+            </div>
+          `).join("")
+          : `<div class="muted">오개념이 뚜렷하게 발견되지 않았어요.</div>`
+        }
+      </div>
+
+      <div class="hr"></div>
+
+      <div style="font-size:13px;font-weight:700;">맞춤 피드백</div>
+      <pre style="margin-top:8px;white-space:pre-wrap;">${escapeHtml(result.feedback || "")}</pre>
+
+      <div class="hr"></div>
+
+      <div style="font-size:13px;font-weight:700;">후속 질문</div>
+      <div class="small muted" style="margin-top:6px;">
+        ${(result.next_questions||[]).map(q=>`<div>• ${escapeHtml(q)}</div>`).join("")}
+      </div>
+    `;
+  }
+
+  // init state
+  const st = loadState();
+  if(!st){
+    $("conceptTitle").value = "먼저 개념 설명 페이지에서 선택하세요";
+    $("levelText").value = "-";
+    $("gold").value = "";
+  }else{
+    $("conceptTitle").value = st.concept || "-";
+    $("levelText").value = levelLabel(st.level || "middle");
+    $("gold").value = st.gold_definition || "";
+  }
+  updatePrompt();
+
+  $("gold").addEventListener("input", ()=>{
+    const st2 = loadState();
+    if(!st2) return;
+    saveState({ ...st2, gold_definition: $("gold").value.trim() });
+    updatePrompt();
+  });
+  $("answer").addEventListener("input", updatePrompt);
+
+  $("btnAnalyze").addEventListener("click", ()=>{
+    const st = loadState();
+    if(!st || !st.concept){
+      alert("먼저 개념 설명 페이지에서 개념을 선택해주세요.");
+      return;
     }
+    const gold = $("gold").value.trim();
+    const ans = $("answer").value.trim();
+    if(!gold || !ans){
+      alert("기준 정의와 답변을 입력해주세요.");
+      return;
+    }
+    const result = demoDiagnose(st.concept, gold, ans);
+    renderResult(result);
+  });
 
-    $("gold").addEventListener("input", ()=>{
-      const st2 = loadState();
-      if(!st2) return;
-      saveState({ ...st2, gold_definition: $("gold").value.trim() });
-      updatePrompt();
-    });
+  $("btnExample").addEventListener("click", ()=>{
+    $("answer").value = "니가 설명해봐라";
+    updatePrompt();
+  });
 
-    $("answer").addEventListener("input", updatePrompt);
+  $("btnCopyJson").addEventListener("click", async ()=>{
+    await navigator.clipboard.writeText($("resultJson").textContent);
+    alert("결과 JSON을 복사했어요.");
+  });
 
-    $("btnAnalyze").addEventListener("click", ()=>{
-      const st = loadState();
-      if(!st || !st.concept){
-        alert("먼저 개념 설명 페이지에서 개념을 선택해주세요.");
-        return;
-      }
-      const gold = $("gold").value.trim();
-      const ans = $("answer").value.trim();
-      if(!gold || !ans){
-        alert("기준 정의와 답변을 입력해주세요.");
-        return;
-      }
-      const result = demoDiagnose(st.concept, gold, ans);
-      renderResult(result);
-    });
+  $("btnExport").addEventListener("click", ()=>{
+    const raw = $("resultJson").textContent.trim();
+    if(!raw || raw==="{}"){
+      alert("저장할 결과가 없습니다.");
+      return;
+    }
+    const blob = new Blob([raw], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `conceptcheck_result_${(st?.concept||"concept")}_${nowStamp().replace(/[^\d]/g,"")}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
 
-    $("btnExample").addEventListener("click", ()=>{
-      $("answer").value = "니가 설명해봐라";
-      updatePrompt();
-    });
-
-    $("btnCopyJson").addEventListener("click", async ()=>{
-      await navigator.clipboard.writeText($("resultJson").textContent);
-      alert("결과 JSON을 복사했어요.");
-    });
-
-    $("btnExport").addEventListener("click", ()=>{
-      const raw = $("resultJson").textContent.trim();
-      if(!raw || raw==="{}"){
-        alert("저장할 결과가 없습니다.");
-        return;
-      }
-      const blob = new Blob([raw], {type:"application/json"});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `conceptcheck_result_${(st?.concept||"concept")}_${nowStamp().replace(/[^\d]/g,"")}.json`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    });
-
-    $("btnBack").addEventListener("click", ()=> location.href = "./index.html");
-    $("btnReset").addEventListener("click", ()=>{
-      $("answer").value = "";
-      $("resultBox").style.display = "none";
-      $("resultJson").textContent = "{}";
-      updatePrompt();
-    });
-  </script>
+  $("btnBack").addEventListener("click", ()=> location.href = "./index.html");
+  $("btnReset").addEventListener("click", ()=>{
+    $("answer").value = "";
+    $("resultBox").style.display = "none";
+    $("resultJson").textContent = "{}";
+    updatePrompt();
+  });
+</script>
 </body>
 </html>
