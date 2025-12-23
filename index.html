@@ -440,13 +440,23 @@ function updatePromptPreview(){
  * - 포트폴리오/발표용: 전체 UX를 한 파일로 보여주기 위함
  * --------------------------- */
 function demoDiagnose(conceptName, gold, answer){
-  // 아주 단순한 규칙 기반(모의) — 실제 LLM 대체용
-  const a = answer.toLowerCase();
-  const g = gold.toLowerCase();
+  // 규칙 기반(모의) — 실제 LLM 대체용
+  const a = (answer || "").toLowerCase();
+  const g = (gold || "").toLowerCase();
 
-  // ✅ 0) "모름/공백/너무 짧은 답" 방어 로직 (필수 패치)
-  const trimmed = answer.trim();
-  const dontKnowPatterns = ["몰라", "모르", "모르겠", "잘 모르", "잘모르", "모르겠어", "모르겠습니다", "모름", "idk", "unknown", "no idea"];
+  // ✅ 0) "모름/공백/너무 짧은 답/회피·지시형 답변" 방어 로직
+  const trimmed = (answer || "").trim();
+
+  const dontKnowPatterns = [
+    "몰라", "모르", "모르겠", "잘 모르", "잘모르", "모르겠어", "모르겠습니다", "모름",
+    "idk", "unknown", "no idea",
+    // ✅ 회피/지시형(질문 되돌리기/떠넘기기)
+    "니가", "네가", "너가", "설명해봐", "설명해봐라", "설명해줘", "설명해 주세요",
+    "해줘", "해봐", "해봐라", "해봐요", "해보세요", "해봐줘",
+    "알려줘", "알려 주세요", "가르쳐줘", "가르쳐 주세요",
+    "말해줘", "말해 주세요", "니가 말해", "너가 말해", "네가 말해",
+    "뭐야?", "뭔데", "뭐냐", "뭐임", "뭔가요"
+  ];
 
   const isDontKnow =
     trimmed.length === 0 ||
@@ -461,33 +471,76 @@ function demoDiagnose(conceptName, gold, answer){
       misconceptions: [
         {
           type: "missing_info",
-          issue: "개념의 정의/핵심 요소가 답변에 거의 포함되지 않았어요.",
+          issue: "개념의 정의/핵심 요소가 답변에 거의 포함되지 않았어요(무응답/회피 포함).",
           evidence: `답변: "${trimmed || "(빈 답변)"}"`
         }
       ],
       feedback:
-        "괜찮아요. 지금은 개념을 말로 풀어내기 어려운 상태예요.\n" +
-        "먼저 기준 설명에서 핵심 키워드(무엇을/무엇으로/무엇을 만들고/무엇이 나오는지)를 표시해보고,\n" +
+        "괜찮아요. 지금 답변은 개념 설명으로 보기 어려워요.\n" +
+        "먼저 기준 설명에서 핵심 키워드(재료/조건/결과)를 표시해보고,\n" +
         "그 키워드 2~3개를 포함해서 1~2문장으로 다시 써보세요.",
-      correct_explanation: gold.trim(),
+      correct_explanation: (gold || "").trim(),
       next_questions: [
         "기준 설명에서 '재료(무엇을 사용하나)'는 무엇인가요?",
         "이 과정의 '결과물(무엇이 만들어지고 무엇이 나오는가)'은 무엇인가요?",
         "핵심 키워드 2~3개를 포함해 1문장으로 다시 설명해보세요."
       ],
       study_tips: [
-        "정의 문장을 '재료 → 과정/조건 → 결과' 순서로 바꿔 써보면 기억이 오래가요.",
+        "정의 문장을 '재료 → 과정/조건 → 결과' 순서로 바꿔 말해보면 이해가 쉬워요.",
         "헷갈리는 단어(흡수/방출 등)는 암기보다 흐름(입력→출력)으로 정리해보세요."
       ]
     };
   }
 
+  // ✅ 0.5) 공통 안전장치: 기준 설명 키워드와 겹침이 거의 없으면 오답 처리
+  // (광합성/밀도/민주주의 같은 특수 규칙을 타더라도 반드시 한 번 더 거름)
+  const stop = new Set([
+    "이다","하는","하고","에서","으로","부터","과정","의미","통해","등","및","때","것","수",
+    "를","을","은","는","이","가","에","와","과","로","도","만","좀","더","해","줘","요","다"
+  ]);
+  const tokenize = (s) =>
+    (s || "")
+      .split(/[^가-힣a-z0-9]+/i)
+      .map(w => w.trim())
+      .filter(w => w && w.length >= 2 && !stop.has(w));
+
+  const goldWords = tokenize(g);
+  const ansWords  = tokenize(a);
+  const goldTop = [...new Set(goldWords)].slice(0, 14);
+  const overlap = goldTop.filter(w => ansWords.includes(w)).length;
+
+  if (overlap <= 1) {
+    return {
+      student_summary: "답변이 개념의 핵심 요소와 충분히 연결되지 않아 이해 수준을 판단하기 어려워요.",
+      understanding_level: "low",
+      is_correct: false,
+      misconceptions: [
+        {
+          type: "missing_info",
+          issue: "정의의 핵심 키워드가 답변에 거의 포함되지 않았어요(내용 부족/비관련 답변).",
+          evidence: `답변: "${trimmed}"`
+        }
+      ],
+      feedback:
+        "지금 답변은 기준 설명의 핵심 요소(재료/조건/결과)가 거의 들어있지 않아요.\n" +
+        "기준 문장에서 핵심 키워드 2~3개를 골라 포함해서 1~2문장으로 다시 설명해보세요.",
+      correct_explanation: (gold || "").trim(),
+      next_questions: [
+        "기준 설명에서 핵심 키워드 2~3개는 무엇인가요?",
+        "그 키워드를 포함해 한 문장으로 다시 설명해보세요."
+      ],
+      study_tips: [
+        "정의를 '재료/조건 → 과정 → 결과' 순서로 다시 적어보면 훨씬 쉬워져요."
+      ]
+    };
+  }
+
+  // --- 여기부터는 기존 '개념별 규칙' + 결과 구성 ---
   let misconceptions = [];
   let isCorrect = true;
 
-  // Rule hints (concept-specific light)
   if(conceptName.includes("광합성")){
-    if(a.includes("산소") && (a.includes("흡수") || a.includes("들이마"))){
+    if(a.includes("산소") && (a.includes("흡수") || a.includes("들이마") || a.includes("마신"))){
       misconceptions.push({
         type:"concept_confusion",
         issue:"광합성에서 산소의 역할을 혼동하고 있어요(흡수 vs 방출).",
@@ -495,41 +548,39 @@ function demoDiagnose(conceptName, gold, answer){
       });
       isCorrect = false;
     }
-    if(a.includes("에너지") && a.includes("만들")){
+    if(a.includes("에너지") && (a.includes("만들") || a.includes("생성"))){
       misconceptions.push({
         type:"partial_understanding",
         issue:"에너지와 생성물(포도당) 관계가 모호하게 설명됐어요.",
-        evidence:"'에너지를 만드는 과정'이라고 표현했어요."
+        evidence:"'에너지를 만드는/생성'처럼 표현했어요."
       });
       isCorrect = false;
     }
   } else if(conceptName.includes("밀도")){
-    if(a.includes("항상") || a.includes("무조건")){
+    if(a.includes("항상") || a.includes("무조건") || a.includes("무조건적")){
       misconceptions.push({
         type:"wrong_causality",
         issue:"밀도는 '무거움'만으로 결정되지 않고 질량/부피 비율이에요.",
-        evidence:"'항상' 또는 '무조건' 같은 단정 표현이 있어요."
+        evidence:"'항상/무조건' 같은 단정 표현이 있어요."
       });
       isCorrect = false;
     }
   } else if(conceptName.includes("민주주의")){
-    if(a.includes("다수결")){
+    if(a.includes("다수결") && (a.includes("만") || a.includes("이면") || a.includes("끝"))){
       misconceptions.push({
         type:"missing_info",
         issue:"민주주의는 다수결 외에도 기본권, 참여, 권력분립 등이 함께 필요해요.",
-        evidence:"답변에서 다수결만 강조했어요."
+        evidence:"답변에서 다수결만으로 충분하다고 말했어요."
       });
       isCorrect = false;
     }
   } else {
-    // Generic: gold 핵심 키워드가 거의 없으면 불완전으로 판단
-    const keywords = g.split(/\s+/).filter(w=>w.length>=3).slice(0,10);
-    const hit = keywords.filter(k=>a.includes(k)).length;
-    if(hit < 2){
+    // 일반 개념: 키워드 겹침이 적으면 medium/low 처리
+    if (overlap <= 2) {
       misconceptions.push({
         type:"missing_info",
         issue:"정의의 핵심 요소가 충분히 포함되지 않았어요.",
-        evidence:"기준 설명의 주요 키워드가 답변에 거의 나타나지 않아요."
+        evidence:"기준 설명의 주요 키워드가 답변에 적게 나타나요."
       });
       isCorrect = false;
     }
@@ -542,7 +593,7 @@ function demoDiagnose(conceptName, gold, answer){
       ? "학습자는 핵심 개념을 비교적 정확하게 이해하고 있어요."
       : "학습자는 개념의 일부를 이해했지만 핵심 요소에서 혼동이 있어요.";
 
-  const correct_explanation = gold.trim();
+  const correct_explanation = (gold || "").trim();
 
   const feedback = isCorrect
     ? "아주 좋아요! 핵심 요소가 잘 들어가 있어요. 이제 예시를 하나 들어 설명해보면 이해가 더 단단해집니다."
@@ -554,12 +605,22 @@ function demoDiagnose(conceptName, gold, answer){
       ].join("\n");
 
   const next_questions = isCorrect
-    ? ["핵심 정의를 예시(상황/문제)와 함께 설명해볼 수 있나요?", "이 개념과 헷갈리기 쉬운 개념은 무엇인가요? 차이를 말해보세요."]
-    : ["기준 설명에서 '핵심 요소' 2가지를 골라 자신의 말로 다시 써보세요.", "혼동한 부분(오개념)을 바로잡는 문장을 1문장으로 작성해보세요.", "예시를 하나 들어 맞는 설명인지 점검해보세요."];
+    ? [
+        "핵심 정의를 예시(상황/문제)와 함께 설명해볼 수 있나요?",
+        "이 개념과 헷갈리기 쉬운 개념은 무엇인가요? 차이를 말해보세요."
+      ]
+    : [
+        "기준 설명에서 '핵심 요소' 2가지를 골라 자신의 말로 다시 써보세요.",
+        "혼동한 부분(오개념)을 바로잡는 문장을 1문장으로 작성해보세요.",
+        "예시를 하나 들어 맞는 설명인지 점검해보세요."
+      ];
 
   const study_tips = isCorrect
     ? ["개념을 문제 상황에 적용해보며 기울이기(연습문제 3개)를 추천해요."]
-    : ["정의 문장에서 '재료/조건/결과(또는 구성요소)'를 색칠해보면 혼동이 줄어들어요.", "헷갈리는 단어(예: 흡수/방출)를 짝지어 외우지 말고 과정 흐름으로 이해해보세요."];
+    : [
+        "정의 문장에서 '재료/조건/결과(또는 구성요소)'를 색칠해보면 혼동이 줄어들어요.",
+        "헷갈리는 단어(예: 흡수/방출)는 짝지어 암기보다 흐름(입력→출력)으로 정리해보세요."
+      ];
 
   return {
     student_summary,
