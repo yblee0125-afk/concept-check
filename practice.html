@@ -13,7 +13,7 @@
       <div class="logo"></div>
       <div>
         <h1>ConceptCheck AI</h1>
-        <div class="sub">문제 풀이 페이지 · 서술형 답변을 진단합니다</div>
+        <div class="sub">문제 풀이 페이지 · 선택한 개념을 자신의 말로 설명해보세요</div>
       </div>
     </div>
     <div class="controls">
@@ -27,8 +27,8 @@
     <section class="card">
       <div class="hd">
         <div>
-          <p class="title">서술형 답변 입력</p>
-          <div class="desc">기준 정의를 확인하고, 자신의 말로 개념을 설명해보세요.</div>
+          <p class="title">서술형 답변 작성</p>
+          <div class="desc">학생은 ‘기준 정의’를 보지 않고, 개념을 자신의 말로 설명합니다.</div>
         </div>
         <div class="split">
           <button class="btn primary" id="btnAnalyze">진단 실행</button>
@@ -47,21 +47,17 @@
           </div>
         </div>
 
-        <div class="row">
-          <label>기준 정의(개념 설명 페이지에서 가져옴)</label>
-          <textarea id="gold"></textarea>
-          <div class="small muted">필요하면 여기서도 수정 가능(수정 시 저장됨)</div>
-        </div>
+        <!-- ✅ 기준 정의 UI 삭제 -->
 
         <div class="row">
           <label>학습자 서술형 답변</label>
-          <textarea id="answer" placeholder="개념을 자신의 말로 설명해보세요."></textarea>
-          <div class="small muted">예: “광합성은 ...”</div>
+          <textarea id="answer" placeholder="선택한 개념을 자신의 말로 설명해보세요. (1~3문장 권장)"></textarea>
+          <div class="small muted">예: “광합성은 식물이 빛을 이용해 …”</div>
         </div>
 
         <div class="split">
           <button class="btn" id="btnExample">오답 예시 넣기</button>
-          <span class="small muted">결과 JSON은 화면에서 숨김(복사/저장은 가능)</span>
+          <span class="small muted">기준 정의는 내부 저장값을 사용합니다(학생 화면에는 비표시).</span>
         </div>
 
         <div class="hr"></div>
@@ -69,6 +65,9 @@
         <div class="row">
           <label>진단 프롬프트(요약 미리보기)</label>
           <pre id="promptPreview"></pre>
+          <div class="small muted" style="margin-top:6px;">
+            * 프롬프트에는 기준 정의가 포함되지만, 화면에는 표시하지 않습니다.
+          </div>
         </div>
       </div>
     </section>
@@ -95,7 +94,7 @@
         <div class="hr"></div>
 
         <div class="small muted">
-          * Demo 모드는 키워드 유사도 기반으로 “정답(유사키워드 충분)”만 정답 처리합니다.
+          * Demo 모드는 저장된 기준 정의와의 키워드 유사도를 기반으로 “정답(유사키워드 충분)”만 정답 처리합니다.
         </div>
       </div>
     </aside>
@@ -103,11 +102,11 @@
 </div>
 
 <script type="module">
-  import { loadState, saveState, nowStamp, safeJson, demoDiagnose, escapeHtml, levelLabel } from "./app.js";
+  import { loadState, nowStamp, safeJson, demoDiagnose, escapeHtml, levelLabel } from "./app.js";
 
   const $ = (id)=>document.getElementById(id);
 
-  function buildPromptPreview(concept, gold, answer, level){
+  function buildPromptPreview(concept, goldHidden, answer, level){
     const sys = [
       "너는 교육용 AI 튜터이자 '개념 진단' 평가자이다.",
       "목표는 학습자의 서술형 답변을 분석하여 개념 이해 여부와 오개념을 진단하고,",
@@ -123,7 +122,7 @@
       concept,
       "",
       `[정확한 개념 설명(기준)]`,
-      gold,
+      goldHidden,  // ✅ 내부 저장된 기준 정의(학생 UI에는 미표시)
       "",
       `[학습자 답변]`,
       answer
@@ -135,9 +134,10 @@
   function updatePrompt(){
     const st = loadState();
     if(!st) return;
+    const goldHidden = (st.gold_definition || "").trim();
     $("promptPreview").textContent = buildPromptPreview(
       st.concept || "-",
-      $("gold").value.trim(),
+      goldHidden || "(기준 정의 없음)",
       $("answer").value.trim(),
       st.level || "middle"
     );
@@ -193,23 +193,15 @@
 
   // init state
   const st = loadState();
-  if(!st){
-    $("conceptTitle").value = "먼저 개념 설명 페이지에서 선택하세요";
+  if(!st || !st.concept){
+    $("conceptTitle").value = "먼저 개념 설명 페이지에서 개념을 선택하세요";
     $("levelText").value = "-";
-    $("gold").value = "";
   }else{
     $("conceptTitle").value = st.concept || "-";
     $("levelText").value = levelLabel(st.level || "middle");
-    $("gold").value = st.gold_definition || "";
   }
   updatePrompt();
 
-  $("gold").addEventListener("input", ()=>{
-    const st2 = loadState();
-    if(!st2) return;
-    saveState({ ...st2, gold_definition: $("gold").value.trim() });
-    updatePrompt();
-  });
   $("answer").addEventListener("input", updatePrompt);
 
   $("btnAnalyze").addEventListener("click", ()=>{
@@ -218,13 +210,19 @@
       alert("먼저 개념 설명 페이지에서 개념을 선택해주세요.");
       return;
     }
-    const gold = $("gold").value.trim();
+    const goldHidden = (st.gold_definition || "").trim();
     const ans = $("answer").value.trim();
-    if(!gold || !ans){
-      alert("기준 정의와 답변을 입력해주세요.");
+
+    if(!goldHidden){
+      alert("기준 정의가 없습니다. 개념 설명 페이지에서 기준 정의를 작성해주세요.");
       return;
     }
-    const result = demoDiagnose(st.concept, gold, ans);
+    if(!ans){
+      alert("답변을 입력해주세요.");
+      return;
+    }
+
+    const result = demoDiagnose(st.concept, goldHidden, ans);
     renderResult(result);
   });
 
@@ -239,6 +237,7 @@
   });
 
   $("btnExport").addEventListener("click", ()=>{
+    const st = loadState();
     const raw = $("resultJson").textContent.trim();
     if(!raw || raw==="{}"){
       alert("저장할 결과가 없습니다.");
