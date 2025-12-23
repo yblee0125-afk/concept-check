@@ -1,0 +1,898 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ConceptCheck AI — LLM 기반 개념 오해 진단</title>
+  <style>
+    :root{
+      --bg:#0b0f19; --card:#121a2a; --card2:#0f1626;
+      --text:#e7edf7; --muted:#a9b5c6; --line:#22314d;
+      --accent:#6aa6ff; --good:#30d158; --warn:#ffd60a; --bad:#ff453a;
+      --chip:#1a2740; --shadow: 0 14px 40px rgba(0,0,0,.35);
+      --radius:16px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+      --sans: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:var(--sans); color:var(--text); background:
+      radial-gradient(1200px 700px at 15% 0%, #18254a 0%, rgba(24,37,74,0) 60%),
+      radial-gradient(900px 600px at 90% 10%, #1c2b59 0%, rgba(28,43,89,0) 55%),
+      var(--bg);
+    }
+    a{color:var(--accent); text-decoration:none}
+    .wrap{max-width:1160px; margin:0 auto; padding:28px 18px 80px}
+    header{
+      display:flex; gap:14px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+      padding:18px 18px; border:1px solid var(--line); border-radius:var(--radius);
+      background:linear-gradient(180deg, rgba(18,26,42,.85), rgba(15,22,38,.85));
+      box-shadow:var(--shadow);
+    }
+    .brand{display:flex; gap:12px; align-items:center}
+    .logo{
+      width:40px; height:40px; border-radius:12px;
+      background:conic-gradient(from 230deg, #6aa6ff, #8a6dff, #45d3ff, #6aa6ff);
+      box-shadow:0 10px 28px rgba(106,166,255,.22);
+    }
+    h1{font-size:18px; margin:0; letter-spacing:-.2px}
+    .sub{font-size:12px; color:var(--muted); margin-top:2px}
+    .controls{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .pill{
+      display:flex; gap:8px; align-items:center;
+      padding:8px 10px; border:1px solid var(--line); border-radius:999px;
+      background:rgba(10,14,24,.35);
+      color:var(--muted); font-size:12px;
+    }
+    .btn{
+      cursor:pointer; border:1px solid var(--line); background:rgba(18,26,42,.6);
+      color:var(--text); padding:10px 12px; border-radius:12px;
+      transition:transform .04s ease, border-color .2s ease, background .2s ease;
+      display:inline-flex; gap:8px; align-items:center;
+    }
+    .btn:hover{border-color:#2f446f; background:rgba(18,26,42,.85)}
+    .btn:active{transform:translateY(1px)}
+    .btn.primary{border-color:rgba(106,166,255,.5); background:rgba(106,166,255,.14)}
+    .btn.primary:hover{background:rgba(106,166,255,.2)}
+    .btn.danger{border-color:rgba(255,69,58,.4); background:rgba(255,69,58,.12)}
+    .btn.danger:hover{background:rgba(255,69,58,.18)}
+    .grid{display:grid; grid-template-columns: 1.2fr .8fr; gap:16px; margin-top:16px}
+    @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
+    .card{
+      border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;
+      background:linear-gradient(180deg, rgba(18,26,42,.85), rgba(15,22,38,.8));
+      box-shadow:var(--shadow);
+    }
+    .card .hd{
+      padding:14px 14px; border-bottom:1px solid var(--line);
+      display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    }
+    .card .hd .title{font-size:14px; color:#dbe6f7; margin:0}
+    .card .hd .desc{font-size:12px; color:var(--muted); margin-top:4px}
+    .card .bd{padding:14px}
+    .row{display:grid; grid-template-columns: 1fr; gap:8px; margin-bottom:12px}
+    label{font-size:12px; color:var(--muted)}
+    input, select, textarea{
+      width:100%; border:1px solid var(--line); border-radius:12px;
+      background:rgba(10,14,24,.4); color:var(--text);
+      padding:10px 11px; outline:none;
+    }
+    textarea{min-height:110px; resize:vertical}
+    input:focus, select:focus, textarea:focus{border-color:#2f446f}
+    .twocol{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+    @media (max-width: 720px){ .twocol{grid-template-columns:1fr} }
+    .chips{display:flex; flex-wrap:wrap; gap:8px}
+    .chip{
+      padding:7px 10px; border:1px solid var(--line);
+      background:rgba(26,39,64,.55);
+      border-radius:999px; font-size:12px; color:#d4def0;
+      cursor:pointer;
+    }
+    .chip.active{border-color:rgba(106,166,255,.55); background:rgba(106,166,255,.14)}
+    .muted{color:var(--muted)}
+    .small{font-size:12px}
+    .split{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .kpi{
+      display:flex; gap:10px; align-items:center; padding:10px 12px;
+      border:1px solid var(--line); border-radius:14px; background:rgba(15,22,38,.6);
+    }
+    .dot{width:10px; height:10px; border-radius:50%}
+    .dot.good{background:var(--good)}
+    .dot.warn{background:var(--warn)}
+    .dot.bad{background:var(--bad)}
+    .mono{font-family:var(--mono)}
+    pre{
+      margin:0; padding:12px; border-radius:14px;
+      border:1px solid var(--line); background:rgba(10,14,24,.45);
+      overflow:auto; font-family:var(--mono); font-size:12px; line-height:1.45;
+    }
+    .list{display:flex; flex-direction:column; gap:10px}
+    .item{
+      padding:12px; border-radius:14px;
+      border:1px solid var(--line); background:rgba(10,14,24,.35);
+    }
+    .item .top{display:flex; justify-content:space-between; gap:10px; align-items:flex-start}
+    .badge{
+      font-size:11px; padding:5px 9px; border-radius:999px;
+      border:1px solid var(--line); background:rgba(26,39,64,.45); color:#d5dff2;
+      white-space:nowrap;
+    }
+    .badge.good{border-color:rgba(48,209,88,.4); background:rgba(48,209,88,.12)}
+    .badge.warn{border-color:rgba(255,214,10,.4); background:rgba(255,214,10,.12)}
+    .badge.bad{border-color:rgba(255,69,58,.4); background:rgba(255,69,58,.12)}
+    .footer-note{margin-top:14px; color:var(--muted); font-size:12px}
+    .hr{height:1px; background:var(--line); margin:12px 0}
+    .toast{
+      position:fixed; right:14px; bottom:14px; width:min(420px, calc(100% - 28px));
+      border:1px solid var(--line); border-radius:14px; padding:12px 12px;
+      background:rgba(15,22,38,.92); box-shadow:var(--shadow);
+      display:none;
+    }
+    .toast.show{display:block}
+    .toast .t{font-size:13px; margin:0 0 4px}
+    .toast .d{font-size:12px; color:var(--muted); margin:0}
+    .linkbtn{background:none; border:none; color:var(--accent); cursor:pointer; padding:0; font:inherit}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo"></div>
+      <div>
+        <h1>ConceptCheck AI</h1>
+        <div class="sub">LLM 기반 개념 오해 진단 · 서술형 답변 분석 · 맞춤 피드백</div>
+      </div>
+    </div>
+    <div class="controls">
+      <div class="pill">
+        <span>모드:</span>
+        <select id="mode">
+          <option value="demo">Demo (모의 진단)</option>
+          <option value="live">Live (Backend /analyze)</option>
+        </select>
+      </div>
+      <div class="pill">
+        <span>API:</span>
+        <input id="apiBase" style="width:220px" value="http://localhost:8000" />
+      </div>
+      <button class="btn" id="btnReset">초기화</button>
+      <button class="btn danger" id="btnClearHistory">히스토리 삭제</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- Left: Input & flow -->
+    <section class="card">
+      <div class="hd">
+        <div>
+          <p class="title">학습 입력</p>
+          <div class="desc">개념 선택 → 기준 정의(교과서/강의노트) → 학생 서술형 답변 입력</div>
+        </div>
+        <div class="split">
+          <div class="kpi">
+            <div class="dot" id="dotStatus"></div>
+            <div>
+              <div class="small">상태</div>
+              <div id="statusText" style="font-size:13px">대기</div>
+            </div>
+          </div>
+          <button class="btn primary" id="btnAnalyze">진단 실행</button>
+        </div>
+      </div>
+
+      <div class="bd">
+        <div class="row">
+          <label>교과/영역</label>
+          <div class="chips" id="subjectChips"></div>
+        </div>
+
+        <div class="twocol">
+          <div class="row">
+            <label>개념(Concept)</label>
+            <select id="conceptSelect"></select>
+          </div>
+          <div class="row">
+            <label>난이도(학년/수준)</label>
+            <select id="level">
+              <option value="elementary">초등</option>
+              <option value="middle" selected>중등</option>
+              <option value="high">고등</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <label>정확한 개념 설명(기준) — 교과서/노트 문장</label>
+          <textarea id="gold"></textarea>
+          <div class="small muted">팁: 기준 문장은 “정의 + 핵심 요소 + 조건/예시” 형태가 좋습니다.</div>
+        </div>
+
+        <div class="row">
+          <label>학습자 서술형 답변</label>
+          <textarea id="answer" placeholder="학습자가 자신의 말로 개념을 설명합니다."></textarea>
+          <div class="small muted">예: “광합성은 식물이 산소를 흡수해서 에너지를 만드는 과정이다.”</div>
+        </div>
+
+        <div class="split">
+          <button class="btn" id="btnFillExample">예시 채우기</button>
+          <button class="btn" id="btnShowPrompt">프롬프트 보기</button>
+          <span class="small muted">Live 모드는 API 키 노출 방지를 위해 백엔드가 필요합니다.</span>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="row">
+          <label>진단 프롬프트(요약 미리보기)</label>
+          <pre id="promptPreview"></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: Output & history -->
+    <aside class="card">
+      <div class="hd">
+        <div>
+          <p class="title">진단 결과</p>
+          <div class="desc">이해 수준 · 오개념 유형 · 맞춤 피드백 · 후속 질문</div>
+        </div>
+        <div class="split">
+          <button class="btn" id="btnCopyJson">JSON 복사</button>
+          <button class="btn" id="btnExport">결과 저장(.json)</button>
+        </div>
+      </div>
+      <div class="bd">
+        <div id="resultSummary" class="item" style="display:none"></div>
+
+        <div class="row">
+          <label>결과 JSON</label>
+          <pre id="resultJson">{}</pre>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="row">
+          <label>진단 히스토리</label>
+          <div id="history" class="list"></div>
+          <div class="footer-note">히스토리는 브라우저 로컬 저장소(localStorage)에 저장됩니다.</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="toast" id="toast">
+    <p class="t" id="toastTitle">알림</p>
+    <p class="d" id="toastDesc">내용</p>
+  </div>
+</div>
+
+<!-- Prompt Modal (simple) -->
+<div id="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55);">
+  <div style="max-width:900px; margin:40px auto; padding:0 14px;">
+    <div class="card">
+      <div class="hd">
+        <div>
+          <p class="title">LLM 프롬프트(예시)</p>
+          <div class="desc">백엔드는 이 프롬프트를 기반으로 LLM에 요청하고, JSON 스키마로 결과를 받습니다.</div>
+        </div>
+        <div class="split">
+          <button class="btn" id="btnCopyPrompt">프롬프트 복사</button>
+          <button class="btn" id="btnCloseModal">닫기</button>
+        </div>
+      </div>
+      <div class="bd">
+        <pre id="promptFull"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/** ---------------------------
+ * Data: Subjects & Concepts
+ * --------------------------- */
+const DATA = {
+  "과학": [
+    {
+      id:"photosynthesis",
+      name:"광합성",
+      gold:"광합성이란 식물이 빛 에너지를 이용하여 이산화탄소와 물로부터 포도당을 합성하고, 그 과정에서 산소를 방출하는 생화학적 과정이다.",
+      exampleAnswer:"식물이 산소를 흡수해서 에너지를 만드는 과정이다."
+    },
+    {
+      id:"density",
+      name:"밀도",
+      gold:"밀도는 물질의 단위 부피당 질량을 의미하며, 같은 부피라면 질량이 클수록 밀도가 크다.",
+      exampleAnswer:"밀도는 무게가 무거운 물질일수록 항상 큰 값이다."
+    },
+    {
+      id:"newton2",
+      name:"뉴턴의 제2법칙",
+      gold:"뉴턴의 제2법칙은 물체에 작용하는 알짜힘이 0이 아니면 물체는 가속도 운동을 하며, 가속도의 크기는 알짜힘에 비례하고 질량에 반비례한다(F=ma).",
+      exampleAnswer:"힘이 작용하면 물체는 항상 같은 속도로 움직인다."
+    }
+  ],
+  "수학": [
+    {
+      id:"linear",
+      name:"일차함수",
+      gold:"일차함수는 y=ax+b 형태로 나타낼 수 있으며, a는 기울기, b는 y절편을 의미한다.",
+      exampleAnswer:"일차함수는 그래프가 항상 곡선인 함수다."
+    },
+    {
+      id:"prob",
+      name:"확률",
+      gold:"확률은 어떤 사건이 일어날 가능성을 0과 1 사이의 수로 나타낸 것이며, 경우의 수를 이용해 계산할 수 있다.",
+      exampleAnswer:"확률은 결과가 많을수록 항상 커진다."
+    }
+  ],
+  "사회": [
+    {
+      id:"democracy",
+      name:"민주주의",
+      gold:"민주주의는 국민이 주권을 가지며, 선거·참여·권력 분립 등을 통해 권력이 국민의 의사에 따라 운영되는 정치 체제이다.",
+      exampleAnswer:"민주주의는 다수결만 있으면 완성되는 제도다."
+    }
+  ]
+};
+
+/** ---------------------------
+ * Utilities
+ * --------------------------- */
+const $ = (id) => document.getElementById(id);
+const storageKey = "conceptcheck_history_v1";
+
+function toast(title, desc){
+  $("toastTitle").textContent = title;
+  $("toastDesc").textContent = desc;
+  const t = $("toast");
+  t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"), 2200);
+}
+
+function nowStamp(){
+  const d = new Date();
+  const pad = (n)=> String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function levelLabel(lv){
+  return lv==="elementary"?"초등": lv==="middle"?"중등":"고등";
+}
+
+function statusSet(kind, text){
+  const dot = $("dotStatus");
+  dot.className = "dot " + (kind || "");
+  $("statusText").textContent = text;
+}
+
+function safeJson(obj){
+  return JSON.stringify(obj, null, 2);
+}
+
+function downloadJson(filename, obj){
+  const blob = new Blob([safeJson(obj)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/** ---------------------------
+ * Prompt composition (for preview & modal)
+ * --------------------------- */
+function buildSystemPrompt(){
+  return [
+    "너는 교육용 AI 튜터이자 '개념 진단' 평가자이다.",
+    "목표는 단순 채점이 아니라 학습자의 서술형 답변을 분석하여 개념 이해 여부와 오개념을 진단하고,",
+    "학습자가 이해할 수 있도록 친절하고 단계적으로 피드백을 제공하는 것이다.",
+    "정답을 먼저 단정적으로 말하기보다 어떤 부분이 혼동되었는지부터 설명하라.",
+    "반드시 지정된 JSON 스키마 형태로만 출력하라(설명 텍스트를 JSON 밖에 쓰지 마라)."
+  ].join("\n");
+}
+
+function buildUserPrompt(concept, gold, answer, level){
+  return [
+    `[학습 수준]`,
+    levelLabel(level),
+    "",
+    `[학습 개념]`,
+    concept,
+    "",
+    `[정확한 개념 설명(기준)]`,
+    gold,
+    "",
+    `[학습자 답변]`,
+    answer,
+    "",
+    "위 정보를 바탕으로 학습자 답변을 분석하여 다음 항목을 JSON으로 출력하라:",
+    "- student_summary (1~2문장)",
+    "- understanding_level (low/medium/high)",
+    "- is_correct (true/false)",
+    "- misconceptions: [{type, issue, evidence}]",
+    "- feedback (맞춤 피드백)",
+    "- correct_explanation (올바른 개념 설명)",
+    "- next_questions (2~3개)",
+    "- study_tips (1~2개)"
+  ].join("\n");
+}
+
+function updatePromptPreview(){
+  const conceptName = $("conceptSelect").selectedOptions[0]?.textContent || "";
+  const gold = $("gold").value.trim();
+  const ans = $("answer").value.trim();
+  const lv = $("level").value;
+  const sys = buildSystemPrompt();
+  const user = buildUserPrompt(conceptName, gold, ans, lv);
+  $("promptPreview").textContent =
+    `SYSTEM\n${sys}\n\nUSER\n${user}`;
+  $("promptFull").textContent =
+    `SYSTEM\n${sys}\n\nUSER\n${user}\n\n(Backend에서는 위 내용을 바탕으로 LLM에 요청하고 JSON 스키마 출력으로 결과를 강제합니다.)`;
+}
+
+/** ---------------------------
+ * Demo diagnosis generator (모의 진단)
+ * - 포트폴리오/발표용: 전체 UX를 한 파일로 보여주기 위함
+ * --------------------------- */
+function demoDiagnose(conceptName, gold, answer){
+  // 아주 단순한 규칙 기반(모의) — 실제 LLM 대체용
+  const a = answer.toLowerCase();
+  const g = gold.toLowerCase();
+
+  let misconceptions = [];
+  let isCorrect = true;
+
+  // Rule hints (concept-specific light)
+  if(conceptName.includes("광합성")){
+    if(a.includes("산소") && (a.includes("흡수") || a.includes("들이마"))){
+      misconceptions.push({
+        type:"concept_confusion",
+        issue:"광합성에서 산소의 역할을 혼동하고 있어요(흡수 vs 방출).",
+        evidence:"답변에서 '산소를 흡수'라고 표현했어요."
+      });
+      isCorrect = false;
+    }
+    if(a.includes("에너지") && a.includes("만들")){
+      misconceptions.push({
+        type:"partial_understanding",
+        issue:"에너지와 생성물(포도당) 관계가 모호하게 설명됐어요.",
+        evidence:"'에너지를 만드는 과정'이라고 표현했어요."
+      });
+      isCorrect = false;
+    }
+  } else if(conceptName.includes("밀도")){
+    if(a.includes("항상") || a.includes("무조건")){
+      misconceptions.push({
+        type:"wrong_causality",
+        issue:"밀도는 '무거움'만으로 결정되지 않고 질량/부피 비율이에요.",
+        evidence:"'항상' 또는 '무조건' 같은 단정 표현이 있어요."
+      });
+      isCorrect = false;
+    }
+  } else if(conceptName.includes("민주주의")){
+    if(a.includes("다수결")){
+      misconceptions.push({
+        type:"missing_info",
+        issue:"민주주의는 다수결 외에도 기본권, 참여, 권력분립 등이 함께 필요해요.",
+        evidence:"답변에서 다수결만 강조했어요."
+      });
+      isCorrect = false;
+    }
+  } else {
+    // Generic: gold 핵심 키워드가 거의 없으면 불완전으로 판단
+    const keywords = g.split(/\s+/).filter(w=>w.length>=3).slice(0,10);
+    const hit = keywords.filter(k=>a.includes(k)).length;
+    if(hit < 2){
+      misconceptions.push({
+        type:"missing_info",
+        issue:"정의의 핵심 요소가 충분히 포함되지 않았어요.",
+        evidence:"기준 설명의 주요 키워드가 답변에 거의 나타나지 않아요."
+      });
+      isCorrect = false;
+    }
+  }
+
+  const understanding_level = isCorrect ? "high" : (misconceptions.length>=2 ? "low" : "medium");
+
+  const student_summary =
+    isCorrect
+      ? "학습자는 핵심 개념을 비교적 정확하게 이해하고 있어요."
+      : "학습자는 개념의 일부를 이해했지만 핵심 요소에서 혼동이 있어요.";
+
+  const correct_explanation = gold.trim();
+
+  const feedback = isCorrect
+    ? "아주 좋아요! 핵심 요소가 잘 들어가 있어요. 이제 예시를 하나 들어 설명해보면 이해가 더 단단해집니다."
+    : [
+        "좋은 시도예요. 다만 몇 가지 중요한 부분에서 혼동이 있어요.",
+        ...misconceptions.map((m,i)=>`${i+1}) ${m.issue}`),
+        "",
+        "아래의 '올바른 개념 설명'을 읽고, 다시 한 번 자신의 말로 1~2문장으로 정리해보세요."
+      ].join("\n");
+
+  const next_questions = isCorrect
+    ? ["핵심 정의를 예시(상황/문제)와 함께 설명해볼 수 있나요?", "이 개념과 헷갈리기 쉬운 개념은 무엇인가요? 차이를 말해보세요."]
+    : ["기준 설명에서 '핵심 요소' 2가지를 골라 자신의 말로 다시 써보세요.", "혼동한 부분(오개념)을 바로잡는 문장을 1문장으로 작성해보세요.", "예시를 하나 들어 맞는 설명인지 점검해보세요."];
+
+  const study_tips = isCorrect
+    ? ["개념을 문제 상황에 적용해보며 기울이기(연습문제 3개)를 추천해요."]
+    : ["정의 문장에서 '재료/조건/결과(또는 구성요소)'를 색칠해보면 혼동이 줄어들어요.", "헷갈리는 단어(예: 흡수/방출)를 짝지어 외우지 말고 과정 흐름으로 이해해보세요."];
+
+  return {
+    student_summary,
+    understanding_level,
+    is_correct: isCorrect,
+    misconceptions,
+    feedback,
+    correct_explanation,
+    next_questions,
+    study_tips
+  };
+}
+
+/** ---------------------------
+ * History (localStorage)
+ * --------------------------- */
+function loadHistory(){
+  try{
+    const raw = localStorage.getItem(storageKey);
+    return raw ? JSON.parse(raw) : [];
+  }catch{ return []; }
+}
+function saveHistory(items){
+  localStorage.setItem(storageKey, JSON.stringify(items));
+}
+function pushHistory(entry){
+  const items = loadHistory();
+  items.unshift(entry);
+  saveHistory(items.slice(0, 12)); // 최근 12개만
+  renderHistory();
+}
+function renderHistory(){
+  const items = loadHistory();
+  const root = $("history");
+  root.innerHTML = "";
+  if(items.length === 0){
+    root.innerHTML = `<div class="item muted small">아직 저장된 히스토리가 없어요. 진단을 실행해보세요.</div>`;
+    return;
+  }
+  items.forEach((it, idx)=>{
+    const badgeClass =
+      it.result.understanding_level === "high" ? "good" :
+      it.result.understanding_level === "medium" ? "warn" : "bad";
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <div class="top">
+        <div>
+          <div style="font-size:13px; margin-bottom:4px;"><b>${it.concept}</b> · ${it.subject} · ${levelLabel(it.level)}</div>
+          <div class="small muted">${it.time}</div>
+        </div>
+        <div class="badge ${badgeClass}">${it.result.understanding_level.toUpperCase()} · ${it.result.is_correct ? "Correct" : "Needs Fix"}</div>
+      </div>
+      <div class="hr"></div>
+      <div class="small">${escapeHtml(it.result.student_summary)}</div>
+      <div class="small muted" style="margin-top:6px;">
+        <button class="linkbtn" data-act="load" data-idx="${idx}">결과 불러오기</button>
+        ·
+        <button class="linkbtn" data-act="export" data-idx="${idx}">JSON 저장</button>
+      </div>
+    `;
+    root.appendChild(div);
+  });
+
+  // attach events
+  root.querySelectorAll("button[data-act]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const idx = Number(btn.getAttribute("data-idx"));
+      const act = btn.getAttribute("data-act");
+      const items = loadHistory();
+      const it = items[idx];
+      if(!it) return;
+      if(act==="load"){
+        // load form & result
+        setFormByEntry(it);
+        showResult(it.result, {save:false});
+        toast("불러오기 완료", "히스토리 항목을 화면에 불러왔습니다.");
+      } else if(act==="export"){
+        downloadJson(`conceptcheck_${it.concept}_${it.time.replace(/[^\d]/g,"")}.json`, it);
+      }
+    });
+  });
+}
+
+function setFormByEntry(it){
+  // subject chip
+  setSubject(it.subject);
+  // concept selection
+  const opt = [...$("conceptSelect").options].find(o=>o.textContent===it.concept);
+  if(opt) $("conceptSelect").value = opt.value;
+  $("level").value = it.level;
+  $("gold").value = it.gold_definition;
+  $("answer").value = it.student_answer;
+  updatePromptPreview();
+}
+
+/** ---------------------------
+ * Rendering result
+ * --------------------------- */
+function levelBadge(lv){
+  if(lv==="high") return {cls:"good", text:"HIGH"};
+  if(lv==="medium") return {cls:"warn", text:"MEDIUM"};
+  return {cls:"bad", text:"LOW"};
+}
+
+function showResult(result, {save=true}={}){
+  $("resultJson").textContent = safeJson(result);
+
+  const badge = levelBadge(result.understanding_level);
+  const sum = $("resultSummary");
+  sum.style.display = "block";
+  sum.innerHTML = `
+    <div class="top">
+      <div>
+        <div style="font-size:13px; margin-bottom:4px;"><b>요약</b></div>
+        <div class="small muted">${escapeHtml(result.student_summary)}</div>
+      </div>
+      <div class="badge ${badge.cls}">${badge.text} · ${result.is_correct ? "Correct" : "Needs Fix"}</div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="small"><b>오개념 진단</b></div>
+    <div class="small muted" style="margin-top:6px;">
+      ${
+        (result.misconceptions && result.misconceptions.length)
+        ? result.misconceptions.map(m=>`
+          <div style="margin-bottom:8px;">
+            <span class="badge">${escapeHtml(m.type)}</span>
+            <div style="margin-top:6px;">• ${escapeHtml(m.issue)}</div>
+            <div class="muted small">근거: ${escapeHtml(m.evidence)}</div>
+          </div>
+        `).join("")
+        : `<div class="muted">오개념이 뚜렷하게 발견되지 않았어요.</div>`
+      }
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="small"><b>맞춤 피드백</b></div>
+    <pre style="margin-top:8px; white-space:pre-wrap;">${escapeHtml(result.feedback || "")}</pre>
+
+    <div class="hr"></div>
+
+    <div class="small"><b>올바른 개념 설명</b></div>
+    <pre style="margin-top:8px; white-space:pre-wrap;">${escapeHtml(result.correct_explanation || "")}</pre>
+
+    <div class="hr"></div>
+
+    <div class="small"><b>후속 질문</b></div>
+    <div class="small muted" style="margin-top:6px;">
+      ${(result.next_questions||[]).map(q=>`<div>• ${escapeHtml(q)}</div>`).join("")}
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="small"><b>학습 팁</b></div>
+    <div class="small muted" style="margin-top:6px;">
+      ${(result.study_tips||[]).map(t=>`<div>• ${escapeHtml(t)}</div>`).join("")}
+    </div>
+  `;
+
+  if(save){
+    const entry = {
+      time: nowStamp(),
+      subject: currentSubject,
+      level: $("level").value,
+      concept: $("conceptSelect").selectedOptions[0]?.textContent || "",
+      concept_id: $("conceptSelect").value,
+      gold_definition: $("gold").value.trim(),
+      student_answer: $("answer").value.trim(),
+      mode: $("mode").value,
+      apiBase: $("apiBase").value.trim(),
+      result
+    };
+    pushHistory(entry);
+  }
+}
+
+/** ---------------------------
+ * Live backend call
+ * --------------------------- */
+async function liveAnalyze(payload){
+  const base = $("apiBase").value.trim().replace(/\/+$/,"");
+  const url = `${base}/analyze`;
+  const res = await fetch(url, {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if(!res.ok){
+    throw new Error(data?.error || `HTTP ${res.status}`);
+  }
+  return data;
+}
+
+/** ---------------------------
+ * Subject / concept UI
+ * --------------------------- */
+let currentSubject = Object.keys(DATA)[0];
+
+function setSubject(subject){
+  currentSubject = subject;
+  // update chips active
+  document.querySelectorAll(".chip[data-subject]").forEach(ch=>{
+    ch.classList.toggle("active", ch.getAttribute("data-subject")===subject);
+  });
+  // update concepts
+  const concepts = DATA[subject] || [];
+  $("conceptSelect").innerHTML = concepts.map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
+  // set gold default
+  if(concepts[0]){
+    $("gold").value = concepts[0].gold;
+    $("answer").value = "";
+  }
+  updatePromptPreview();
+}
+
+function initSubjects(){
+  const root = $("subjectChips");
+  root.innerHTML = "";
+  Object.keys(DATA).forEach((sub, i)=>{
+    const chip = document.createElement("div");
+    chip.className = "chip" + (i===0 ? " active":"");
+    chip.textContent = sub;
+    chip.setAttribute("data-subject", sub);
+    chip.addEventListener("click", ()=> setSubject(sub));
+    root.appendChild(chip);
+  });
+}
+
+function fillExample(){
+  const concepts = DATA[currentSubject] || [];
+  const conceptId = $("conceptSelect").value;
+  const c = concepts.find(x=>x.id===conceptId);
+  if(!c) return;
+  $("gold").value = c.gold;
+  $("answer").value = c.exampleAnswer;
+  updatePromptPreview();
+  toast("예시 입력", "기준 정의와 학습자 답변 예시를 채웠어요.");
+}
+
+function escapeHtml(str){
+  return String(str)
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+/** ---------------------------
+ * Events
+ * --------------------------- */
+$("conceptSelect").addEventListener("change", ()=>{
+  const concepts = DATA[currentSubject] || [];
+  const c = concepts.find(x=>x.id===$("conceptSelect").value);
+  if(c) $("gold").value = c.gold;
+  updatePromptPreview();
+});
+
+["gold","answer","level"].forEach(id=>{
+  $(id).addEventListener("input", updatePromptPreview);
+  $(id).addEventListener("change", updatePromptPreview);
+});
+
+$("btnFillExample").addEventListener("click", fillExample);
+
+$("btnShowPrompt").addEventListener("click", ()=>{
+  updatePromptPreview();
+  $("modal").style.display = "block";
+});
+
+$("btnCloseModal").addEventListener("click", ()=> $("modal").style.display="none");
+$("modal").addEventListener("click", (e)=>{
+  if(e.target.id==="modal") $("modal").style.display="none";
+});
+
+$("btnCopyPrompt").addEventListener("click", async ()=>{
+  await navigator.clipboard.writeText($("promptFull").textContent);
+  toast("복사 완료", "프롬프트를 클립보드에 복사했어요.");
+});
+
+$("btnAnalyze").addEventListener("click", async ()=>{
+  const concept = $("conceptSelect").selectedOptions[0]?.textContent || "";
+  const gold = $("gold").value.trim();
+  const answer = $("answer").value.trim();
+  const level = $("level").value;
+  const mode = $("mode").value;
+
+  if(!concept || !gold || !answer){
+    toast("입력 필요", "개념/기준/답변을 모두 입력해주세요.");
+    return;
+  }
+
+  const payload = {
+    concept,
+    gold_definition: gold,
+    student_answer: answer
+  };
+
+  statusSet("warn", "분석 중...");
+  try{
+    let result;
+    if(mode==="demo"){
+      // small delay for UX
+      await new Promise(r=>setTimeout(r, 350));
+      result = demoDiagnose(concept, gold, answer);
+    }else{
+      result = await liveAnalyze(payload);
+    }
+    showResult(result, {save:true});
+    statusSet("good", "완료");
+    toast("진단 완료", "결과가 생성되었습니다.");
+  }catch(err){
+    statusSet("bad", "실패");
+    toast("에러", String(err.message || err));
+    $("resultJson").textContent = safeJson({error: String(err.message || err)});
+  }
+});
+
+$("btnReset").addEventListener("click", ()=>{
+  setSubject(currentSubject);
+  $("answer").value = "";
+  updatePromptPreview();
+  $("resultJson").textContent = "{}";
+  $("resultSummary").style.display = "none";
+  statusSet("", "대기");
+  toast("초기화", "입력/결과를 초기화했어요.");
+});
+
+$("btnClearHistory").addEventListener("click", ()=>{
+  localStorage.removeItem(storageKey);
+  renderHistory();
+  toast("삭제 완료", "히스토리를 모두 삭제했어요.");
+});
+
+$("btnCopyJson").addEventListener("click", async ()=>{
+  await navigator.clipboard.writeText($("resultJson").textContent);
+  toast("복사 완료", "결과 JSON을 복사했어요.");
+});
+
+$("btnExport").addEventListener("click", ()=>{
+  const raw = $("resultJson").textContent.trim();
+  if(!raw || raw==="{}"){
+    toast("저장 불가", "저장할 결과가 없습니다.");
+    return;
+  }
+  try{
+    const obj = JSON.parse(raw);
+    const concept = $("conceptSelect").selectedOptions[0]?.textContent || "concept";
+    downloadJson(`conceptcheck_result_${concept}.json`, obj);
+  }catch{
+    toast("저장 불가", "결과 JSON이 올바르지 않습니다.");
+  }
+});
+
+$("mode").addEventListener("change", ()=>{
+  const m = $("mode").value;
+  toast("모드 변경", m==="demo" ? "Demo 모드로 전환" : "Live(Backend) 모드로 전환");
+});
+
+/** ---------------------------
+ * Init
+ * --------------------------- */
+(function init(){
+  initSubjects();
+  setSubject(currentSubject);
+  renderHistory();
+  statusSet("", "대기");
+  updatePromptPreview();
+})();
+</script>
+</body>
+</html>
